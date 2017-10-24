@@ -1,0 +1,565 @@
+\documentclass[]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{fullpage}
+\usepackage{biblatex}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\usepackage{multirow}
+\usepackage{cellspace} 
+\usepackage{amsthm}
+\theoremstyle{definition}
+\usepackage[framed,numbered,autolinebreaks]{mcode}
+\usepackage{pgfplots} 
+\newtheorem{exmp}{Ex}[section]
+\newcommand*\diff{\mathop{}\!\mathrm{d}}
+\newcommand*\Diff[1]{\mathop{}\!\mathrm{d^#1}}
+
+\title{Numerical Methods for Engineers: A practical approach}
+\author{Jonathan Haydak}
+\numberwithin{equation}{section}
+\begin{document}
+	\maketitle
+	\setlength\cellspacetoplimit{4pt}
+	\setlength\cellspacebottomlimit{4pt}
+	\tableofcontents
+	\newcommand{\dydx}[2]{\frac{\text{d}{#1}}{\text{d} {#2}}}
+	\newcommand{\der}[1]{\frac{\partial}{\partial {#1}}}
+	\part{Differential Equations}
+	\section{Derivative approximations}
+	Like so many things in math, we start by taking a function $f(x)$ and expanding it around some $x = x_0$ with a taylor series:
+	\begin{equation}
+	f(x) = f(x_0) + f'(x_0) (x-x_0) + \frac{f''(x_0)}{2!} (x-x_0)^2 + \frac{f'''(x_0)}{3!} (x-x_0)^3 
+	\end{equation}
+	Neglecting the issue of convergence, we know that this expression is true for all $x$ in a small neighborhood of $x_0$. Next, if we stay within a small neighborhood of $x_0$, we see that the $(x-x_0)^2$ will be much larger than the remaining terms due to the fact that a small number repeatedly raised to higher powers rapidly approaches zero. Given this, we truncate the Taylor series and make the approximation:
+	\begin{equation}
+	f(x) \approx f(x_0) + f'(x_0) (x-x_0) + \mathcal{O}\left((x-x_0)^2 \right) \label{d1}
+	\end{equation}
+	It is worth taking a second to discuss what these equations means. Formally, it means that regardless of the choice of $x_0$, there exists a $c$ such that 
+	\begin{align}
+	\lvert f(x) - f_{approx}(x) \rvert \leq c \lvert x- x_0 \rvert^2 \nonumber \\
+	\lvert f(x) - \left( f(x_0) + f'(x_0) (x-x_0) \right) \rvert \leq c \lvert x- x_0 \rvert^2
+	\end{align}
+	What this is saying is that the error in our approximation of $f(x)$ is proportional to $(x-x_0)^2$. Moreover, this says that we can make our approximation arbitrarily accurate by making $(x-x_0)^2$ small enough. In general, the exact functional form of $mathcal{O}(x-x_0)^2$ and we can play fast and dirty with algebraic manipulations involving this (and other error terms). Namely, we can multiply it by a constant, and smaller terms, and it still remains the same:
+	\begin{align*}
+	&\mathcal{O} (x-x_0) = \mathcal{O} (x_0 - x) \\
+	&\mathcal{O}(x-x_0) = -\mathcal{O}(x-x_0) \\
+	&\mathcal{O}(x-x_0) = 50\mathcal{O}(x-x_0) \\
+	&\mathcal{O}(x-x_0) = \mathcal{O}(x-x_0) + (x-x_0)^3 - (x-x_0)^4 \\
+	&\frac{\mathcal{O}(\left(x-x_0\right)^2)}{x-x_0} = \mathcal{O}(x-x_0) 
+	\end{align*}
+	and so on.
+	
+	Now, suppose we want to approximate $f'(x_0)$ using \eqref{d1}. This gives us:
+	\begin{equation}
+	f'(x_0) \approx \frac{f(x) - f(x_0)}{x-x_0} + \mathcal{O}(x-x_0)
+	\end{equation}
+	If we evaluate the above expression at $ x = x_0 + \Delta t$, we end up with a formula for approximating the derivative at any point $x_0$ whose error is proportional to $\Delta x$.
+	\begin{equation}
+	f'(x_0) \approx \frac{f(x_0+\Delta x) - f(x_0)}{\Delta x} + \mathcal{O}(\Delta x) \label{fd}
+	\end{equation}
+	\eqref{fd} is called a \textbf{forward difference quotient}. We say it is first order accurate in $\Delta x$ because its error is $\mathcal{O}(\Delta x)$. If instead we were to evaluate \eqref{d1} at $x = x_0 - \Delta t$, we would get a \textbf{backward difference quotient}:
+	\begin{equation}
+	f'(x_0) \approx \frac{f(x_0) - f(x_0-\Delta x)}{\Delta x} + \mathcal{O} (\Delta x) \label{bd}
+	\end{equation}
+	Can we do better though? Yes, but we have to include more terms in the approximation. For example, what if we were to average the forward and backward difference quotient. Would we end up with a more accurate approximation. If you naively add up the terms in \eqref{fd} and \eqref{fd} and divide by 2, you might be tempted to say that the error on this type of scheme is still first order. However, there is cancellation going on in the error terms that you will miss if you do not expand out the difference quotients using more terms. Using a second order taylor series, we can write out the following expansions:
+	\begin{align}
+	f(x+\Delta x) &= f(x) + f'(x) \Delta x + \frac{f''(x)}{2} \Delta x^2 + \mathcal{O}(\Delta x^3) \label{ tayf} \\
+	f(x-\Delta x) &= f(x) - f'(x) \Delta x + \frac{f''(x)}{2} \Delta x^2 + \mathcal{O}(\Delta x^3) \label{ tayb} 
+	\end{align}
+	Taking \eqref{ tayf} - \eqref{ tayb} and rearranging gives the following:
+	\begin{equation}
+	f'(x) = \frac{f(x+\Delta x) - f(x-\Delta x)}{2\Delta x} + \mathcal{O}(\Delta x^2) \label{cd}
+	\end{equation}
+	\eqref{cd} is called a \textbf{central difference quotient}. It is the average of the forward and backward quotients and we see that it is second order accurate.
+	
+	In a similar manner to how we obtained the central difference quotient, you can obtain higher order accuracy forward, backward, and central difference quotients by writing out taylor expansions of $f(x+\Delta x)$, $f(x-\Delta x)$, $f(x+2\Delta x)$, $f(x-2\Delta x)$ and adding the appropriate multiples of the corresponding equations to get terms to cancel. Some common difference schemes and their accuracy are summarized in the table below.
+	\begin{center}
+		\begin{tabular}{Sc|Sc|Sc|} 
+			\cline{2-3}
+			& Discrete approximation & Error \\
+			\cline{1-3}
+			\multicolumn{1}{|c|}{} &  $\dfrac{f(x+h) - f(x)}{h}$ & $\mathcal{O}(h)$ \\ \cline{2-3}
+			\multicolumn{1}{|c|}{\multirow{5}{*}{$f'(x)$}} & $\dfrac{f(x) - f(x-h)}{h}$ &  $\mathcal{O}(h)$ \\ \cline{2-3}
+			\multicolumn{1}{|c|}{} & $\dfrac{f(x+h) - f(x-h)}{2h}$ &  $\mathcal{O}(h^2)$ \\ \cline{2-3}
+			\multicolumn{1}{|c|}{} & $\dfrac{-.5f(x+2h)+2f(x+h) - 1.5f(x)}{h}$ & $\mathcal{O}(h^2)$ \\ \cline{2-3}
+			\multicolumn{1}{|c|}{} & $\dfrac{.5f(x-2h)-2f(x-h) + 1.5f(x)}{h}$ & $\mathcal{O}(h^2)$ \\ \cline{2-3}
+			\multicolumn{1}{|c|}{} & $\dfrac{\frac{1}{12}f(x-2h) - \frac{2}{3} f(x-h) + \frac{2}{3}f(x+h) - \frac{1}{12}f(x+2h)}{h}$ & $\mathcal{O}(h^4)$ \\ \cline{1-3}
+			\multicolumn{1}{|c|}{\multirow{4}{*}{$f''(x)$}} & $\dfrac{f(x+2h)-2f(x+h)+f(x)}{h^2}$ &  $\mathcal{O}(h)$ \\ \cline{2-3}
+			\multicolumn{1}{|c|}{} & $\dfrac{-f(x-2h)+2f(x-h)-f(x)}{h^2}$ &  $\mathcal{O}(h)$ \\ \cline{2-3}
+			\multicolumn{1}{|c|}{} & $\dfrac{f(x+h) - 2f(x) + f(x-h)}{h^2}$ &  $\mathcal{O}(h^2)$ \\ \cline{2-3}
+			\multicolumn{1}{|c|}{} & $\dfrac{-\frac{1}{12}f(x+2h) + \frac{4}{3}f(x+h)-\frac{5}{2}f(x) + \frac{4}{3}f(x-h) - \frac{1}{12}f(x-2h)}{h^2}$ &  $\mathcal{O}(h^4)$ \\ \cline{1-3}
+		\end{tabular}
+	\end{center}
+	
+	\section{Differential Equations}
+	The most general form of a differential equation (O.D.E) takes the form:
+	\begin{equation}
+	f_n(x,y) \frac{\text{d}^ny}{\text{d}x^n} + f_{n-1}(x,y) \frac{\text{d}^{n-1}y}{\text{d}x^{n-1}} + \ldots + f_2(x,y) \frac{\text{d}^2y}{\text{d}x^2y} + f_1(x,y) \frac{\text{d}y}{\text{d}x} + f_0(x,y) = 0 \label{gdiffeq}
+	\end{equation}
+	If each $f_i$ in \eqref{gdiffeq} is a function of x only, that is, $f_i(x,y) = f_i(x)$, then we say that the differential equation is linear. We will see later on in this section that linear equations are very nice to deal with and that like so many things in math non-linearities can potentially make our lives very difficult. For \eqref{gdiffeq} to be solvable, we must be additional information in the form of boundary conditions or initial conditions. The number of additional constraints we must be given for the equation to have a unique solution is equal to the order of the equation. A first order differential equation would require only one piece of additional information, but a second order equation would require two.
+	\subsection{Initial Value Problems}
+	Let us start out by considering a relatively easy class of differential equations: first order linear initial value problems. This type of equation will have the form:
+	\begin{equation}
+	\frac{\text{d}y}{\text{d}t} + f(y,t) = 0, \quad y(t=t_0) = y_0 \label{1oIVP}
+	\end{equation}
+	The basic idea is to discretize this differential equation and to come up with a scheme that allows us to solve for the next time level.
+	\subsubsection{Explicit Methods}
+	\subparagraph{Forward Euler}
+	First, let us try approximating the derivative in \eqref{1oIVP} with a simple forward difference. We have previously shown in the first section that approximating the derivative in this way will give us $\mathcal{O}(\delta t))$ error, and we end up with the same error fo\eqref{gdiffeq} when we approximate it with this type of difference. As you can imagine, we can achieve better errors by using higher order errors, and we will visit this concept shortly.
+	
+	Suppose we create a grid of equally spaced mesh points for $t$ such that $ t_n = n\Delta t$ for $n = 1, 2,\ldots,\frac{T}{\Delta t}$ where $T$ is the total time interval for which we seek a solution. We will define $y_n$ to be the calculated solution at time level $n$, that is, $y_n = y(t = t_n) = y( t = n\Delta t )$. To apply an explicit method, we approximate everything at the $n_th$ time level (as opposed to the (n+1)th time level). This essentially means wherever we see $g(t)$ we replace it with $g_n$ and wherever we see $t$ we replace it with $t_n$. We can approximate \eqref{1oIVP} as
+	
+	\begin{equation}
+	\frac{y_{n+1} - y_n}{\Delta t} + f(y_n,t_n) = 0
+	\end{equation}
+	isolating for $y_{n+1}$,
+	\begin{equation}
+	y_{n+1} = y_n - \Delta t f(y_n,t_n), \quad y(t_0) = y_0
+	\end{equation}
+	This gives us an explicit algorithm to proceed forward in calculating y at the $n+1$ time level using information from the previous time step. Since we are given an initial condition, proceeding from the initial condition to later timesteps is relatively straightforward:
+	\begin{align*}
+	y_1 &= y_0 - \Delta t f(y_0,t_0) \\
+	y_2 &= y_1 - \Delta t f(y_1,t_1) \\
+	y_3 &= y_2 - \Delta t f(y_2,t_2) \\
+	& \qquad \qquad \vdots \\
+	y_N & = y_{N-1} - \Delta tf(y_{N-1},t_{N-1})	 
+	\end{align*}
+	The method we just described has a special name: Euler's method. Or, more precisely, Forward Euler's method. What step size $\Delta t$ should we use? There is no one-size-fits-all answer to this and really depends on the problem. We will have much more to say about step sizes later on, but to start out with the idea is to basically just choose $\Delta t$ small enough so that we get a converged solution. Keep in mind that this method approximate using a derivative with first order error in $\Delta t$, so we expect the solution we come up with to have first order error as well. This means that we should probably prefer small $\Delta t$.
+	
+	Although you can think of Euler's method as a first order approximation of the derivative, an alternative and perhaps more useful view is in terms of linear approximations. For example, consider \eqref{gdiffeq} again. We can write this equation in a slightly different form:
+	\begin{equation*}
+		\frac{\text{d}y}{\text{d}t} = g(y,t), \qquad y(t=t_0) = y_0
+	\end{equation*}
+	If we perform a first order taylor approximation about $t=t_0$ and ignore the remainder, then we have for small $\Delta t$ that:
+	\[
+	y(t_0 + \Delta t) = y(t_0) + \Delta t g(y_0,t_0)
+	\]
+	From this, we see that Euler's method essentially estimates the function by calculating the current slope, and then taking a tiny step forward along this slope, and repeating this process. Solutions without sharp curvature are easier to converge than those that have a lot of curvature.
+	\begin{exmp}
+		Given the differential equation 
+		\[
+		g'(t) + 2tg(t) = 0, \qquad g(0) = .5
+		\]
+		Use the forward Euler's method to calculate $g$ on the interval $ 0 \leq t \leq 2$. Investigate what happens for various choices of $\Delta t$.\\
+	\end{exmp}	
+	
+	\textbf{Solution:} First, we discretize the equation using a forward difference to approximate the time derivative.
+	\begin{equation*}
+	\frac{g_{n+1} - g_n}{\Delta t} + 2t_ng_n = 0
+	\end{equation*}
+	\begin{equation*}
+	g_{n+1} = g_n - \Delta t 2 t_ng_n
+	\end{equation*}
+	\begin{equation*}
+	g_{n+1} = g_n (1- 2n\Delta t^2 )
+	\end{equation*}
+	This gives us a straightforward algorithm for computing $g$ at later time levels, and we can code up a solution using Matlab. We can even solve this equation analytically and compare the analytic solution to our approximations. Using an integration factor, we find that
+	\begin{equation*}
+	g(t) = \frac{1}{2}e^{-t^2} 
+	\end{equation*}
+	and we can check that this is correct by plugging it in
+	\begin{equation*}
+	g'(t) + 2tg(t) = -te^{-t^2} + te^{-t^2} = 0
+	\end{equation*}
+	\begin{figure}[H]
+		\includegraphics[scale=1]{2_1fig.png}
+		\caption{Forward Euler method with various timesteps.}
+	\end{figure}
+	From this, we see that we get relatively good qualitative agreement very quickly as the step size is decreased. We also see that as $\Delta t \to 0$, the solution converges to the analytic solution.
+	\subparagraph{Summary} To derive an explicit scheme for a differential equation, we can write the correspond discrete equation by approximating the derivative(s) using your favorite difference quotient and than evaluating all the other terms at the $n$th time level. You should be able to isolate the $y_{n+1}$ term and write it explicitly in terms of other variables.
+	\subsubsection{Improving Euler's Method}
+	\subparagraph{Using higher order derivative approximations}
+	We used a first order difference quotient in the previous example, but we know that has a first order truncation error. We can approve the accuracy of our scheme by using more accurate approximations of the derivative. For example, let us try using a centered difference quotient. In this case, \eqref{1oIVP} becomes:
+	\begin{equation}
+		\frac{y_{n+1} - y_{n-1}}{2\Delta t} + f(y_n,t_n) = 0
+	\end{equation}
+	\begin{equation}
+		y_{n+1} = y_{n-1} - f(y_n,t_n)
+	\end{equation}
+	Wait! We only have one given initial condition, but it seems like to start this scheme we need to know two consecutive values of $y_i$. This is only a minor problem: we can estimate either $y_{-1}$ or $y_{1}$ using Euler's method and then proceed with this scheme.
+	\subsection{Implicit Methods}
+	The central idea behind explicit methods is to estimate $y_{n+1}$ by performing a taylor expansion around $y_n$. If instead we were to estimate $y_{n+1}$ with a taylor expansion around $y_{n+1}$, we would end up with an \textbf{implicit} method. It is relatively straightforward to convert an explicit method to an implicit method: for every term that does not contain a derivative of $y$, replace the time step $n$ with $n+1$. For instance, to get the simplest implicit method, Implicit Euler,  \ref{1oIVP} becomes
+	\begin{equation}
+		\frac{y_{n+1} - y_n}{\Delta t} + f(y_{n+1},t_{n+1}) = 0
+	\end{equation}
+	Notice now that isolating $y_{n+1}$ is more tricky because it also appears in the $f(y_{n+1},t_{n+1})$ term. If the differential equation is non-linear, implicit methods can be rather difficult and computationally expensive to solve depending on the nature of the non-linearity. In the case of linear equations and most ordinary differential equations that engineers encounter, the method is not too different from the normal euler method. At this point, you may well be wondering something along the lines of "Why bother?" It turns out that implicit methods have desirable stability and convergence properties for many differential equations in which achieving reasonable accuracy with an explicit method would require unrealistically small step sizes. These types of differential equations are called "stiff" and can be solved more efficiently using an implicit method and a larger step size.
+	
+	To fully illustrate the different between explicit and implicit methods, consider the following example.
+	\begin{exmp}
+		Solve $y'(x) + 4y(x) = 2x\cos(20x)$ on the interval $ 0 \leq x \leq 4 $ given that $y(0) = 2$. Use the implicit Euler method and examine what happens to the convergence of the solution as the step size is varied.
+	\end{exmp}
+	\textbf{Solution:} Upon inspection of this differential equation, we see that that the cosine term has a frequency of $\frac{2\pi}{20} =  .314159$. Because the period is significantly lower than the length of the interval we are solving $y$ over, we should be cautious and consider that the solution might show significant curvature. Thus, an implicit method is appropriate for solving this problem.
+	
+	First, we convert our differential equation into a discrete approximation:
+	\begin{align*}
+			&\frac{y_{n+1} - y_n}{\Delta x} + 4 y_{n+1} = 2 x_{n+1} \cos(20x_{n+1}) \\
+			&y_{n+1} - y_n + 4 \Delta x y_{n+1} = 2\Delta x x_{n+1} \cos(20x_{n+1}) \\
+			&(1 + 4\Delta x) y_{n+1} = y_n + 2\Delta x x_{n+1} \cos(20x_{n+1})\\
+			&y_{n+1} = \frac{y_n + 2\Delta x x_{n+1} \cos(20x_{n+1})}{1 + 4\Delta x}
+	\end{align*}
+	Since we are given $y_0 = 2$, we now have a straightforward way of calculating this scheme.
+		\begin{center}
+		\begin{figure}[H]
+			\includegraphics[scale=.75]{ex3_fig.png} 
+			\caption{Implicit Euler with various timesteps.}
+			\label{fig:implic1}
+		\end{figure}
+	\end{center}
+	\subsection{Predictor-Corrector Methods}
+	\subsubsection{Modified Euler/Heun Method}
+	Numerical methods for differential equations are a lot like ice cream. There are so many options to choose from and choosing a flavor can be very difficult. However, humans have a knack for ingenuity and discovered long ago that ice cream can be mixed so that I can get half chocolate and half vanilla or any combination that I want. In much the same way, the choice of a numerical scheme can seem overwhelming. Just like with ice cream, it turns out that combining implicit and explicit methods works out well. These schemes are called "Predictor-Corrector Methods". They combine the the best properties of both explicit and implicit methods and are very popular in practice.
+	
+	The basic concept behind this method is to make a prediction using an explicit scheme expanded about $y_i$ to "predict" a later point such as $y_{i+.5}$ or $y_{i+1}$ Let's call this prediction $y^*$. The next step is to "correct" the estimate of $y_{i+1}$ using a weighted average of explicit methods expanded about $y_i$ and $y^*$. For higher order methods of this type, there can be more than one prediction step.
+
+	If that description sounds abstract, that is okay. Formally stating this algorithm should hopefully illustrate what is going on. The simplest predictor-corrector method is called the "modified Euler method" or "Heun's" method. Suppose we are attempting to solve
+	\begin{equation}
+		\frac{\text{d}y}{\text{d}x} = f(y,x) , \qquad f(x=x_0) = a \label{ModEulerDE}
+	\end{equation}
+	with $a$ being a constant. The first step is to use Euler's method to "predict" $y_{n+1}$:
+	\begin{equation}
+		y^*_{n+1} = y_{n} + \Delta x f(y_n,x_n)
+	\end{equation}
+	The second step is to "correct" the estimate for $y_{n+1}$ using the prediction:
+	\begin{equation}
+		y_{n+1} = y_n +  \frac{\Delta x}{2} \left(f(y^*_{n+1},x_{n+1}) + f(y_n,x_n)\right)
+	\end{equation}
+	Although we are doing more computations with this algorithm than an implicit or euler, it turns out that the increase in the number of computations corresponds to a negligible increase in computation time. If you are familar with complexity analysis, this means that these methods have the same run time as the simpler implicit or explicit methods. To illustrate the utility of predictor corrector methods, let us consider applying this scheme to a solution with significant curvature.
+	
+	\begin{exmp}
+	Solve $y'(x) + (y(x))^3 = 2x\cos^2(25x)$ on the interval $ 0 \leq x \leq 10 $ given that $y(0) = 2$. Use the modified Euler method and examine how the convergence depends on $\Delta x$.
+	\end{exmp}
+	\textbf{Solution:} The first step consists of a prediction:
+	\begin{equation*}
+		y^*_{n+1} = y_n + \Delta x \left(2x_n \cos^2(25x_n) - (y_n)^3\right)
+	\end{equation*}
+	The second step is the correction:
+		\begin{equation*}
+			y_{n+1} = y_n + \frac{\Delta x}{2} \left(2x_{n+1}\cos^2(25x_{n+1}) - (y^*_{n+1})^3 + 2x_n \cos^2(25x_n) - (y_n)^3\right)
+		\end{equation*}
+	From which we can now code up the scheme. As an illustration of how one might go about coding this up, a sample Matlab code is given.
+		\lstinputlisting{ex_4.m}
+		\begin{center}
+		\begin{figure}[H]
+			\includegraphics[scale=.35]{ex4_1_fig.png} 
+			\caption{Heun's method with various step sizes. For functions with a lot of curvature, larger step sizes are unstable.}
+			\label{fig:Heun1_1}
+		\end{figure}
+		\begin{figure}[H]
+		\includegraphics[scale=.3]{ex4_2_fig.png} 
+		\caption{Zoomed-in section of previous plot}
+		\label{fig:Heun1_2}
+	\end{figure}
+%%\input{ex4.tex}
+	
+	\end{center}
+	\subsubsection{Runge-Kutta methods}
+		Runge-Kutta (RK) methods are a family of techniques that use predictor-corrector steps to integrate ordinary differential equations. While there are actually many RK techniques, the most famous one is probably the RK4 technique. The reason being it is relatively easy to implement, but gives an astonishing cumulative error of $\mathcal{O}(\Delta t^4)$. We will first describe the second order RK2 technique, and then the popular RK4. Suppose we are again given \eqref{ModEulerDE}:
+			\begin{equation}
+		\frac{\text{d}y}{\text{d}x} = f(x,y) , \qquad f(x=x_0) = a \label{ModEulerDE2}
+		\end{equation}
+		The approach with the RK2 method is to predict the value of $y$ at the midpoint of the interval being considered, that is a step size of $ \frac{1}{2} \Delta x$. We then approximate the slope of $y$ at the midpoint using this prediction. Finally, we calculate the value for $y_{n+1}$ using the value of the slope at this predicted point. Formally, tis can be described as:
+		\begin{align*}
+			&h_1 = \Delta x f(x_n,y_n) \\
+			&h_2 = \Delta x f(x_{n+\frac{1}{2}}, y_n + \frac{1}{2}h_1)\\
+			&y_{n+1} = y_n + h_2
+		\end{align*}
+		This method gives an accumulated error of $\mathcal{O}(\Delta x^2)$. The more popular RK4 technique, which yields a global error of $\mathcal{O}(\Delta x^4)$ involves more prediction and correction steps, but can be formally described as:
+		\begin{align*}
+			& h_1 = \Delta x f(x_n,y_n) \\
+			& h_2 = \Delta x f(x_{n+\frac{1}{2}},y_n + \frac{1}{2}h_1) \\
+			& h_3 = \Delta x f(x_{n+\frac{1}{2}}, y_n + \frac{1}{2}h_2) \\
+			& h_4 = \Delta x f(x_{n+1}, y_n + h_3) \\
+			& y_{n+1} = y_n + \frac{1}{6} \left(h_1 + 2h_2 + 2h_3 + h_4\right)
+		\end{align*}
+		In general, the coefficients are chosen so as to minimize the error that the method produces. However, if you find yourself in a pitch and you can't remember the correct coefficients for averaging or what points to predict, you can probably make up your own method and still get good accuracy (good, not optimal, but as an engineer all you should care about is good enough!) as long as enough prediction and correction steps are included and the coefficients add up to one. For example consider the following whimsical RK method that we shall call \textbf{Jon's method}:
+		\begin{align*}
+			h_1 &= \Delta x f(x_n,y_n) \\
+			h_2 &= \Delta x f(x_{n+\frac{1}{4}}, y_n + \frac{1}{4}h_1) \\
+			h_3 &= \Delta x f(x_{n+\frac{1}{2}}, y_n + \frac{1}{2} h_2) \\
+			h_4 &= \Delta x f(x_{n+\frac{3}{4}}, y_n + \frac{3}{4} h_3) \\
+			h_5 &= \Delta x f(x_{n+1}, y_n + h_4) \\
+			y_{n+1} &= y_{n+1} + \frac{1}{9} (h_1 + 2h_2 + 3h_3 + 2h_4 + h_5)
+		\end{align*}
+		Although the above method uses  prediction/correction steps, we should not expect it to be fifth order accurate seeing as the points and weights were chosen arbitrarily rather than to minimize error. We should, however, expect this scheme to perform quite well because it is averaging over several intervals rather than at a single point.
+		
+		\begin{exmp}
+			Given the differential equaiton $x^4y'+ (x^3 + 2x)y = \sin(x) + 2$, solve for $y(10)$ given that $y(1)$ = 0. Compare the accuracy of the RK2 method, the RK4 method, and Jon's method. 
+		\end{exmp}
+	\textbf{Solution}: The analytic solution to this differential equation would most likely be very messy to find. To compare accuracies of these methods, we will calculate $y(x)$ using an RK4 scheme with a very small step size. It is worthwhile to point out that the RK4 method is actually robust and accurate enough that we can essentially use it as a gold standard in this case to approximate the true solution with "good enough" accuracy.
+	
+	First, we express differential equation in terms of the slope.
+	\begin{gather*}
+		y' = \frac{\sin(x)}{x^4} + \frac{2}{x^4} - \frac{y}{x} - \frac{2y}{x^3} \\
+	\end{gather*}
+	\lstinputlisting{ex5.m}
+		\begin{center}
+		\begin{figure}[H]
+			\includegraphics[scale=.75]{ex5_fig.png} 
+			\caption{Comparison of several RK techniques.}
+			\label{fig:RK2RK4RKjon}
+		\end{figure}
+	\end{center}
+Notice that the RK4 scheme performs relatively well, even with a large step size of .25. This is the power of predictor corrector techniques - it overcomes inaccuracies caused by sharp curvature by considering the slope at various points. In this example, we see that the RK2 technique does not have enough prediction/correction steps to overcome the curvature. The jon's method is better than the RK2 method but worse than RK4. This is not surprising - it has one more prediction and correction step than RK4, but the sampling points and weighting was chosen arbitrarily instead of so as to minimize the error.
+	\subsection{Adaptive Step Sizes}
+	For most of the methods considered so far, it was assumed that a uniform step size was used. In most cases, this is a very natural and reasonable choice to make. However, for problems that are very computationally expensive and take a long period of time to run, efficiency becomes very important so as to reduce the number of steps needed. One of the best ways to do this is to use a step size that changes. While there are various rules for choosing the step size, the basic idea is to check the error at each step and to make it smaller if the error is to large.
+	\subsubsection{Richardson Extrapolation}
+	In this context, suppose that we are trying to solve a given IVP with a method that is $k$ order accurate. Let $A^*$ represent the exact solution. We have
+	\begin{align}
+		A^* &= A(h) + Bh^k + Ch^{k+1} \nonumber \\
+		&= A(h) + Bh^k + \mathcal{O}(h^{k+1}) \label{rich1}
+	\end{align}
+	where $A(h)$ is the approximate solution from the scheme with step size $h$ and $B$ is a constant. Going forward, we will sometimes neglect writing the higher order terms because they are (hopefully) sufficiently small, but do not forget that they are always there. Multiplying both sides by $2^k$ and using a step size of $\frac{h}{2}$ 
+	\begin{equation}
+		2^k A^* = 2^k A\left(\frac{h}{2}\right) + B h^k \label{rich2} + \mathcal{O}(h^{k+1})
+	\end{equation}
+	subtracting \eqref{rich2} - \eqref{rich1}
+	\begin{gather}
+		(2^k -1)A^* = 2^k A\left(\frac{h}{2}\right) - A(h) + \mathcal{O}(h^{k+1}) \nonumber \\
+		A^* = \frac{2^k A\left(\frac{h}{2}\right) - A(h)}{(2^k -1)} + \mathcal{O}(h^{k+1}) \label{rich3}
+	\end{gather}
+	what this says is that when integrating a differential equation, if we make two predictions  for $y_{n+1}$ with a step size $h$ (one step) and $\frac{h}{2}$ respectively, we can use \eqref{rich3} to get an approximation that is $k+1$ accurate, an entire order more accurate than $A(h)$ and $A(\frac{h}{2})$. This is useful, but we still need to determine if it is \textit{good enough}. To determine this, we can compute the error of $A(\frac{h}{2})$, which we know will be $\textit{less}$ accurate than \eqref{rich3}. If this error is good enough, than the error from \eqref{rich3} will certainly be good enough.
+	\begin{align}
+		E_{rr}[A(h/2)] &= A^* - A(h/2) \nonumber \\
+		&= B(h/2)^{k} + \mathcal{O}(h)^{k+1}		 \nonumber \\
+		&= B(h/2)^k  \label{rich4}
+	\end{align}
+	Now solving for $B$
+	\begin{gather*}
+		A^* = A(h) + Bh^k + Ch^{k+1} \\
+		A^* = A(h/2) + B(h/2)^k + C(h/2)^{k+1}
+	\end{gather*}
+	subtracting these two equations
+	\begin{gather}
+		0 = A(h) - A(h/2) + Bh^k (1 - \frac{1}{2^k}) + \mathcal{O}(h^{k+1}) \nonumber \\
+		B = \frac{A(h) - A(h/2)}{h^k (1 - \frac{1}{2^k})} + \mathcal{O}(h^{k+1}) \label{rich5}
+	\end{gather}
+	plugging \eqref{rich5} into \eqref{rich4}
+	\begin{equation}
+		E_{rr}[A(h/2)] = \frac{A(h) - A(h/2)}{\frac{1}{2^k} - 1} \label{rich6}
+	\end{equation} 
+	With all this, we can now describe a method for integrating with an adaptive step size:
+	\begin{enumerate}
+		\item Start with a set step size $h$. Compute $A(h)$ and $A(h/2)$. In other words, compute $y_{n+1}$ twice: once with step size $h$, and again with step size $(h/2)$ (this one will take two steps to reach $y_{n+1}$.
+		\item Calculate the error using \eqref{rich6} and compare it to your error tolerance. If the error is less than the tolerance, calculate $y_{n+1}$ from $A(h)$ and $A(h/2)$ using \eqref{rich3}.
+		\item If the error is greater than the tolerance, the integration will need to be repeated with a new timestep. If the error was within the tolerance, a new timestep for the next step should be predicted. In either care, the new step size can be estimated by solving
+		\[
+			E_{rr} [A(h)] = Bh_{new,1}^k
+		\]
+		\item Either repeat the previous integration or move onto the next one using 
+		\[
+			h_{new,2} = .9 h_{new,1}
+		\]
+		where the factor of .9 is added to help ensure that the desired accuracy is reached.
+		\end{enumerate}
+		\begin{exmp}
+			Given $y'(x) = (.01x^2-2)y^{.5} + e^{-x^2}y + x^2\sin^2(x)$ and the initial condition $y(2) = 0$, use an adaptive step to calculate $y(10)$. Compare the results to using a uniform step size.
+		\end{exmp}
+	\textbf{Solution}
+		\begin{figure}[H]
+		\includegraphics[scale=.7]{ex6_fig.png} 
+		\caption{Comparison of adaptive and uniformly spaced RK4 method.}
+		\label{fig:AdapRK4}
+		\end{figure}
+	From Figure \ref{fig:AdapRK4}, we see that the adaptive RK4 method is able to ensure very high accuracy while making much larger step sizes. Notice that as the curvature increases, the step size becomes smaller, and when the curvature decreases the step size becomes bigger. Although each step of the adaptive algorithm involves more computations than a single step of a uniform RK4 method, the total number of computations is much lower overall.
+		\lstinputlisting{ex6.m}
+		
+	
+	\subsection{Higher Order Differential Equations}
+	\subsection{Direct explicit methods}
+	Many of the lessons from previous sections are still for higher order differential equations. We can convert the equation into a discrete scheme with derivative approximations, and then either solve it with an explicit or implicit method. Since there is essentially nothing new to learn, it is best to start with an example.
+	\begin{exmp}
+		Solve $x^2y''(x) + xy'(x) + (x^2-4)y = 0$ on the interval $ 1 \leq x \leq 10 $ subject to the conditions $y(1) = .75$, $y'(1) = 1$. Use centered difference quotients and an explicit scheme.
+	\end{exmp}
+	\textbf{Solution:} First, we write the discrete form of the equation and isolate for $y_{n+1}$
+	\begin{align*}
+		&x^2 \frac{y_{n+1} - 2y_n + y_{n-1}}{\Delta x^2} + x \frac{y_{n+1}-y_{n-1}}{2\Delta x} + (x^2-4)y_n = 0 \\
+		&y_{n+1} - 2y_n + y_{n-1}  + \left(\frac{\Delta x}{x}\right) \frac{y_{n+1}-y_{n-1}}{2} + \left(\frac{\Delta x^2}{x^2}\right)(x^2 - 4) y_n = 0 \\
+		&\left(1 + \frac{\Delta x}{2x}\right)y_{n+1} = \left(\frac{4\Delta x^2}{x^2}-\Delta x^2 + 2\right) y_n + \left(\frac{\Delta x}{2x} -1 \right) y_{n-1} \\
+		&y_{n+1} = \frac{\frac{4\Delta x^2}{x^2}-\Delta x^2 + 2}{1 + \frac{\Delta x}{2x}} y_n + \frac{\frac{\Delta x}{2x} -1}{1 + \frac{\Delta x}{2x}}y_{n-1}
+	\end{align*}
+	We are given $y_0$, but we also need $y_1$ or $y_{-1}$. The second boundary condition gives us an additional equation if we use a forward quotient:
+	\begin{align*}
+	&\frac{y_1 - y_0 }{\Delta x} = y'(0) \\
+	&y_1 = y_0 + \Delta x y'(0) \\
+	&y_1 = .75 + \Delta x
+	\end{align*}
+	\begin{center}
+	\begin{figure}[H]
+		\includegraphics[scale=.75]{2_2fig.png} 
+		\caption{Centered scheme with various timesteps.}
+		\label{fig:num_bessel_fig}
+	\end{figure}
+	\end{center}
+	From Figure \ref{fig:num_bessel_fig}, we see that convergence is achieved rather quickly. Although the final expression is rather cumbersome, the process was virtually identical to that used for a first order ODE.
+	\begin{exmp}
+		Given the equation $\frac{y''(x)}{1+x^2} - \sin(x)y'(x) + (x^2 - 1)y(x) = 0$ and the boundary conditions $y(1) = y(4) = 0$, find $y(x)$ on the interval $ 1 \leq x \leq 4$. 
+	\end{exmp}
+	\textbf{Solution} We begin by writing the corresponding discrete equation. For simplicity, we will use centered difference schemes.
+	\begin{gather*}
+		\frac{y_{n+1} - 2y_n + y_{n-1}}{(1+x_n^2)\Delta x^2} - \sin(x_n) \frac{y_{n+1} - y_{n-1}}{2\Delta x} + (x_n^2 -1) y_n = 0 \\
+		\left(\frac{1}{(1+x_n^2)\Delta x^2} - \frac{\sin(x_n)}{2\Delta x}\right) y_{n+1} + \left(x^2_n -1 - \frac{2}{(1+x_n^2)\Delta x^2}\right) y_n + \left(\frac{1}{(1+x_n^2)\Delta x^2} + \frac{\sin(x_n)}{2\Delta x}\right) y_{n-1} = 0 \\
+		y_{n+1} = \frac{\left(-x^2_n +1 + \frac{2}{(1+x_n^2)\Delta x^2}\right)}{\left(\frac{1}{(1+x_n^2)\Delta x^2} - \frac{\sin(x_n)}{2\Delta x}\right)} y_{n} - \frac{\left(\frac{1}{(1+x_n^2)\Delta x^2} + \frac{\sin(x_n)}{2\Delta x}\right)}{\left(\frac{1}{(1+x_n^2)\Delta x^2} - \frac{\sin(x_n)}{2\Delta x}\right) } y_{n-1}
+	\end{gather*}
+	Because the boundary conditions do not allow us to get two consecutive values for $y_k$ and $y_{k+1}$, we will have to solve this system as a matrix. For convenience, suppose 
+	\[
+		y_{n+1} = f_1(x_n) y_{n} - f_2(x_n)y_{n-1}
+	\]
+	 with $f_1,f_2$ being the appropriate functions just derived. We see that we if we divide the interval $[1,4]$ into $N$ points, we can write $N-2$ equations:
+	 \begin{align*}
+	 	f_2(x_1)y_0-f_1(x_1) y_1 +y_2 &= 0 \\
+	 	f_2(x_2)y_1-f_1(x_2) y_2  + y_3&=0 \\
+	 	f_2(x_3)y_2 - f_1(x_3)y_3 + y_4 &= 0 \\
+	 	&\vdots  \\
+	 	f_2(x_{N-2})y_{N-3} - f_1(x_{N-2})y_{N-2} + y_{N-1} &= 0
+	 \end{align*}
+	 Notice that we only have $N-2$ equations but $N$ variables. The final two equations from the boundary condition give us enough information to solve the system of equation. Given this, we can rewrite the system of equations as a matrix equation:
+	\[\begin{bmatrix}
+		f_2(x_1) & -f_1(x_1) & 1 & 0 & 0 & 0 & 0 &\ldots \\
+		0 & f_2(x_2) & -f_1(x_2) & 1 & 0 & 0 & 0 &\ldots \\
+		0 & 0 & f_2(x_3) & -f_1(x_3) & 1 & 0 & 0 &\ldots \\
+		\vdots & \vdots & \vdots & \vdots & \vdots & \vdots & \ddots
+	\end{bmatrix}
+	\begin{bmatrix}
+	y_0 \\
+	y_1 \\
+	y_2 \\
+	y_3 \\
+	y_4 \\
+	\vdots \\
+	y_{N-1}
+	\end{bmatrix}
+	= \begin{bmatrix}
+	0 \\
+	0 \\
+	0 \\
+	0 \\
+	0 \\
+	\vdots \\
+	0
+	\end{bmatrix}
+	\]  
+	Thus, solving  the problem now reduces to solving this matrix equation. 
+		\begin{center}
+		\begin{figure}[H]
+			\centering
+			\includegraphics[scale=.7]{ex7_fig.png} 
+			\caption{Centered scheme with various timesteps.}
+			\label{fig:2ndorder2}
+		\end{figure}
+	\end{center}
+\lstinputlisting{ex7.m}
+\subsection{Conversion into a system of equations}
+The more standard way of solving higher order linear ordinary differential equation is to use a transformation of variables. Suppose we are given the equation
+\begin{equation}
+	f_0(x) \frac{\diff^n y}{\diff x^n}  + f_1(x) \frac{\diff^{n-1}y}{\diff x^{n-1}} + \ldots + f_{n-2}(x) \frac{\diff^2y}{\diff x^2} + f_{n-1}(x) \frac{\diff y}{\diff x} + f_{n}(x) = 0
+\end{equation}
+Consider the transformation
+\begin{align*}
+	v_0 &= y \\
+	v_1 &= \frac{\diff y }{\diff x} \\
+	v_2 &= \frac{\diff^2 y}{\diff x^2} \\
+	&\vdots \\
+	 v_{n-2} &= \frac{\diff^{n-2}y}{\diff x^{n-2}}  \\
+	 v_{n-1} &= \frac{\diff^{n-1}y}{\diff x^{n-1}}
+\end{align*}
+Upon taking the derivative of each $v_i$ term, we see that the problem is now transformed into solving a system of first order differential equations. Observe that the differential equation for each $v_i$ term is almost trivial to write except for the last one. For this derivative, we use the original differential equaiton itself to obtain the corresponding term.
+\begin{gather*}
+	v_0' = v_1 \\
+	v_1' = v_2 \\
+	v_2' = v_3 \\
+	 \vdots \\
+	v_{n-2}' = v_{n-1} \\
+	v_{n-1}' = \frac{-f_n(x)}{f_0(x)} - \frac{f_{n-1}(x)}{f_0(x)} v_1 - \frac{f_{n-2}(x)}{f_0(x)} v_2 - \ldots - \frac{f_1(x)}{f_0(x)} v_{n-1}
+\end{gather*}
+Or, expressed in matrix form
+\begin{equation*}
+	\underbrace{\begin{bmatrix}
+	v_0 \\
+	v_1 \\
+	v_2 \\
+	\vdots \\
+	v_{n-2} \\
+	v_{n-1} 
+	\end{bmatrix}'}_{\mathbf{v'}} =
+	\underbrace{\begin{bmatrix}
+	0 &1  & 0 & 0 &0 &  \ldots & 0  \\
+	0 & 0 & 1 & 0 & 0  & \ldots & 0\\
+	0 & 0 & 0 & 1 & 0 & \ldots &0 \\
+	\vdots & \vdots & \vdots  & \vdots & \ddots & &  \vdots\\
+	0 & 0 & 0 & 0 & 0 & \ldots & 1 \\  
+	\frac{-f_{n-1}}{f_0} & \frac{-f_{n-2}}{f_0} & \ldots &  \ldots & \ldots & & \frac{-f_{1}}{f_0} \\
+	\end{bmatrix}}_{\mathbf{A}}
+	\underbrace{\begin{bmatrix}
+		v_0 \\
+	v_1 \\
+	v_2 \\
+	\vdots \\
+	v_{n-2} \\
+	v_{n-1} 
+	\end{bmatrix}}_{\mathbf{v}} + 
+		\underbrace{\begin{bmatrix}
+	0 \\
+	0 \\
+	0 \\
+	\vdots \\
+	0 \\
+	\frac{-f_n}{f_0} 
+	\end{bmatrix}}_{\mathbf{b}}
+\end{equation*}
+From here, any appropriate method can be used to solve for $v_0$, which will also be a solution to the original differential equation.
+\begin{exmp}
+	Given the IVP problem $y''' -2x^2 y'' + xy' = 0$ and the initial conditions $y(0) = 0$,  $y'(0) = 6$, $y''(0)=-5.5$, solve for y(12).
+\end{exmp}
+\textbf{Solution:} Using the transformations
+\begin{align*}
+	v_0 &= y \\
+	v_1 &= y' \\
+	v_2 &= y'' \\
+\end{align*}
+recasting the equation using the new variables
+\begin{align*}
+	v_0' &= v_1, \quad v_0(0) = 0\\
+	v_1' &= v_2, \quad v_1(0) = 0\\
+	v_2' &= 2x^2v_2 - xv_1, \quad v_2(0) = 0
+\end{align*}
+which can be easily integrated using an RK4 method.
+		\begin{center}
+	\begin{figure}[H]
+		\centering
+		\includegraphics[scale=.7]{ex8_fig.png} 
+		\label{fig:system1}
+	\end{figure}
+\end{center}
+\lstinputlisting{ex8.m} The previous example had initial data that was nice - we did not have to jump through any hoops to incorporate it. However, this is not always the case, as the following example will illustrate. If we are given initial data located at different points, we end up having to solve a matrix equation rather than just a recurrence relation.
+\begin{exmp}
+	Given $y''+\frac{1}{x}y'+ (x+1)y = 0$ and the boundary conditions $y(0) = 1$, $y(20) = 25$, find $y(5)$.
+\end{exmp}
+\textbf{Solution:} We begin by making the transformation $v_0 = y$ and $v_1 = y'$ to obtain 
+\begin{align*}
+	v_0' &= v_1 \\
+	v_1' &= -(x+1)v_0 - \frac{1}{x}v_1
+\end{align*}
+\[
+	\underbrace{\begin{bmatrix}
+	v_0 \\
+	v_1
+	\end{bmatrix}'}_{\mathbf{v'}} = \underbrace{\begin{bmatrix}
+	0 & 1 \\
+	-(x+1) & \frac{-1}{x} \\
+	\end{bmatrix}}_{\mathbf{A}} \underbrace{\begin{bmatrix}
+	v_0 \\
+	v_1 
+	\end{bmatrix}}_{\mathbf{v}}
+\]
+which can be solved with an RK4 scheme. Notice now that we are working with vectors instead of scalars. Letting $\mathbf{A}_n = \mathbf{A}|_{x=x_n}$,
+\begin{align*}
+	\mathbf{h}_1 &= dx \mathbf{A}_n \mathbf{v}_n \\
+	\mathbf{h_2} &= dx\mathbf{A}_{n+.5} (\mathbf{v}_n + .5\mathbf{h}_1)
+\end{align*}
+\end{document}
+
+%%references: 
+% https://people.sc.fsu.edu/~jpeterson/nde_book4.pdf
+%http://www.math.ubc.ca/~feldman/m256/richard.pdf
