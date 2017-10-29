@@ -27,7 +27,7 @@
 	\newcommand{\dydx}[2]{\frac{\text{d}{#1}}{\text{d} {#2}}}
 	\newcommand{\der}[1]{\frac{\partial}{\partial {#1}}}
 	\part{Differential Equations}
-	\section{Derivative approximations}
+	\subsection{Derivative approximations}
 	Like so many things in math, we start by taking a function $f(x)$ and expanding it around some $x = x_0$ with a taylor series:
 	\begin{equation}
 	f(x) = f(x_0) + f'(x_0) (x-x_0) + \frac{f''(x_0)}{2!} (x-x_0)^2 + \frac{f'''(x_0)}{3!} (x-x_0)^3 
@@ -93,7 +93,7 @@
 		\end{tabular}
 	\end{center}
 	
-	\section{Differential Equations}
+	\section{Methods}
 	The most general form of a differential equation (O.D.E) takes the form:
 	\begin{equation}
 	f_n(x,y) \frac{\text{d}^ny}{\text{d}x^n} + f_{n-1}(x,y) \frac{\text{d}^{n-1}y}{\text{d}x^{n-1}} + \ldots + f_2(x,y) \frac{\text{d}^2y}{\text{d}x^2y} + f_1(x,y) \frac{\text{d}y}{\text{d}x} + f_0(x,y) = 0 \label{gdiffeq}
@@ -364,9 +364,8 @@ Notice that the RK4 scheme performs relatively well, even with a large step size
 		\end{figure}
 	From Figure \ref{fig:AdapRK4}, we see that the adaptive RK4 method is able to ensure very high accuracy while making much larger step sizes. Notice that as the curvature increases, the step size becomes smaller, and when the curvature decreases the step size becomes bigger. Although each step of the adaptive algorithm involves more computations than a single step of a uniform RK4 method, the total number of computations is much lower overall.
 		\lstinputlisting{ex6.m}
-		
 	
-	\subsection{Higher Order Differential Equations}
+	\section{Higher Order Differential Equations}
 	\subsection{Direct explicit methods}
 	Many of the lessons from previous sections are still for higher order differential equations. We can convert the equation into a discrete scheme with derivative approximations, and then either solve it with an explicit or implicit method. Since there is essentially nothing new to learn, it is best to start with an example.
 	\begin{exmp}
@@ -553,13 +552,130 @@ which can be easily integrated using an RK4 method.
 	v_1 
 	\end{bmatrix}}_{\mathbf{v}}
 \]
-which can be solved with an RK4 scheme. Notice now that we are working with vectors instead of scalars. Letting $\mathbf{A}_n = \mathbf{A}|_{x=x_n}$,
-\begin{align*}
-	\mathbf{h}_1 &= dx \mathbf{A}_n \mathbf{v}_n \\
-	\mathbf{h_2} &= dx\mathbf{A}_{n+.5} (\mathbf{v}_n + .5\mathbf{h}_1)
-\end{align*}
-\end{document}
+Under this transformation, we obtain new boundary conditions as well: $v_0(1) = 1$, $v_0(20)=25$. 
 
+We might be tempted to try and use an RK4 scheme. In this case, these boundary conditions do not allow us to easily do that. Notice now that we are working with vectors instead of scalars. To get the correct number of equations and unknowns to solve, we need to write out the equation at all $n-2$ points between the boundaries and solve simultaneously Letting $v_0^n = v_0(x_n)$ and $v_1^n = v_1(x_n)$, the discretized version of the differential equation using a forward Euler method becomes
+	\subsection{Boundary Value Problems}
+In the worst case scenario, Initial Value Problems can usually be reduced to solving a system of linear algebraic equations. Boundary value problems are often a bit more involved. Generally, a boundary value problem (BVP) can be posed in the following manner: we are seeking to find a differentiable function $f(x)$ that satisfies 
+\begin{equation}
+\frac{\diff^2 f}{\diff x^2} = g \left(x, f, \frac{\diff f}{\diff x}\right) \qquad f(a) = \alpha, \quad f(b) = \beta \label{eq:bvp1}
+\end{equation}
+ with $\alpha,\beta$ being scalars. For a boundary value problem, we cannot have a first order differential equation. This is because a first order ODE requires one piece of additional information to be unique. Two conditions would overspecify the system. 
+\subsubsection{Guess and Check: Shooting method }
+The first method we will present for solving a BVP is the Shooting method. Despite the fancy name, it really amounts to guessing and checking for a solution. It is probably best illustrated with an example, but the idea is to solve an IVP that solves the BVP conditions. Instead of considering \eqref{eq:bvp1}, consider the IVP problem
+\begin{equation}
+	\frac{\diff^2 f}{\diff x^2} = g \left(x, f, \frac{\diff f}{\diff x}\right) \qquad f(a) = \alpha, \quad \frac{\diff f}{\diff x}\Big|_{x=a} = w  \label{eq:bvp2}
+\end{equation}
+where $w$ is now a variable. Let $F(w,b)$ denote $f(b)$ that solves \eqref{eq:bvp2} for that value of $w$. We can solve \eqref{bvp1} by finding the roots of $F(w,b) - \beta$. Clearly, this method is a lot of work. We have encountered examples of differential equations that are significantly difficult to solve once, but now we are going to have to solve an IVP possibly many times to get a clear picture of what $F(w,b) - \beta$ looks. If necessary, we could optimize this process using root finding methods. However, unless the differential equation is extremely stiff and costly to integrate, this is usually overkill.
+\begin{exmp}
+	Consider the differential equation $x^2 y'' + x^2y' + (x^2-5)y = 0 $ satisfying the boundary conditions $y(1) = 0$ and $y(5) = 1$.
+\end{exmp}
+\textbf{Solution} First, we need to solve the corresponding IVP. For the initial conditions, we can choose to work with either boundary, but we will arbitrarily choose to use the initial conditions $y(1) = 0$ and $y'(1) = w$. Using the transformation $v_0 = f$, $v_1 = f'$, we can express this equation as
+\[\underbrace{
+\begin{bmatrix}
+v_0 \\
+v_1
+\end{bmatrix}'}_{\mathbf{v}'} = \underbrace{\begin{bmatrix}
+0 & 1 \\
+\left(\frac{5}{x^2} - 1\right) & -1 \\
+\end{bmatrix}}_{\mathbf{A}} \underbrace{\begin{bmatrix}
+v_0 \\
+v_1
+\end{bmatrix}}_{\mathbf{v}}
+\] Because we will be solving this equation multiple times, we will start out using a relatively large step size. Later on, we can refine our solution. Consider splitting up the interval $[1,5]$ into $N$ equally spaced points $x_i$ for $i=1,2,\dots,N$. Letting $\mathbf{A}^n = \mathbf{A}|_{x=x_n}$ and $\mathbf{v}^n=\mathbf{v}|_{x=x_n}$
+\begin{gather*}
+	\mathbf{h}_1 = \Delta x \mathbf{A}^{n} \mathbf{v}^n\\
+	\mathbf{h}_2 = \Delta x \mathbf{A}^{n+.5} (\mathbf{v}^n+.5\mathbf{h}_1) \\
+	\mathbf{h}_3 = \Delta x \mathbf{A}^{n+.5} (\mathbf{v}^n+.5\mathbf{h}_2) \\
+	\mathbf{h}_4 = \Delta x \mathbf{A}^{n+1} (\mathbf{v}^n+\mathbf{h}_3) \\
+	\mathbf{v}^{n+1} = \mathbf{v}^n + \frac{1}{6} (\mathbf{h}_1 + 2\mathbf{h}_2 + 2 \mathbf{h}_3 + \mathbf{h}_4) 
+\end{gather*}
+and the initial conditions become
+\[
+	\mathbf{v}^1 = \begin{bmatrix}
+	0 \\
+	w
+	\end{bmatrix}
+\]
+Let $F(w,5)$ denote the solution so this $IVP$ for $y'(0) = w$ at $x = 5$. Our first task is to find $F(w,5)-1$ for enough $w$ to find a root. To start with, we will consider $ w = -20, -19, -18, \dots, 19, 20$.
+	\begin{figure}[H]
+		\centering
+		\includegraphics[scale=.7]{ex9_fig.png} 
+		\label{fig:ex9}
+	\end{figure}
+\lstinputlisting{ex9.m}
+From this, we see that the correct initial solution is around $w = 3$. Now we can refine both $w$ and $dx$ by using smaller spacing as well as doing a linear interpolation of $w$.
+\begin{lstlisting}
+	g = @(xq) interp1(wrange,F-1,xq);
+	w_sol = fzero(@(x) g(x),2);
+\end{lstlisting}
+	\begin{figure}[H]
+	\centering
+	\includegraphics[scale=.7]{ex9_2_fig.png} 
+	\label{fig:ex9_2}
+\end{figure}
+and so using a value of $w = 1.9799$ and a step size of $\Delta x = 1 \times 10^{-4}$
+	\begin{figure}[H]
+	\centering
+	\includegraphics[scale=.7]{ex9_3_fig.png} 
+	\label{fig:ex9_3}
+\end{figure}
+
+In the previous example, we saw that $F(w,5)-1$ was linear in $w$. This is a result of the linearity of the differential equation. For BV problems, if the differential equation is linear, there is a unique solution and using linear interpolation can be used to leverage serious savings in computational time. Instead of solving the equation for many values of $w$, only two different values need to be evaluated as long as there is a sign change between the two values. From here, the root can be linearly interpolated.
+
+On the other hand, nonlinear BVPs are significantly more involved. For these problems, $F(w,b) - \beta$ is \textit{not} linear. Moreover, the solution is not even unique. There can be multiple roots. Interpolation can still be used, but not over large ranges like in the linear case. The following example will demonstrate this.
+
+\begin{exmp}
+	Find a solution to the differential equation $y'' + y^2y' + xy = 0$ with $y(0) = 2$ and $y(10) = \frac{1}{2}$.
+\end{exmp}
+Like the previous example, we will use the transformation $v_0 = y$ and $v_1 = y'$. Unlike the previous example, the matrix equation will now have an additional term representing the nonlinearity.
+\[\underbrace{
+	\begin{bmatrix}
+	v_0 \\
+	v_1
+	\end{bmatrix}'}_{\mathbf{v}'} = \underbrace{\begin{bmatrix}
+	0 & 1 \\
+	-x & 0 \\
+	\end{bmatrix}}_{\mathbf{A}} \underbrace{\begin{bmatrix}
+	v_0 \\
+	v_1
+	\end{bmatrix}}_{\mathbf{v}} + 
+\underbrace{\begin{bmatrix}
+	0 \\
+	-v_0^2v_1
+	\end{bmatrix}}_{\mathbf{b}}
+\] 
+Again, consider splitting up the interval $[0,10]$ into $N$ equally spaced points $x_i$ for $i=1,2,\dots,N$ and let $\mathbf{A}^n = \mathbf{A}|_{x=x_n}$, $\mathbf{v}^n=\mathbf{v}|_{x=x_n}$, and $\mathbf{b}_ = \mathbf{b}|_{x = x_n}$. Using an RK4 scheme,
+\begin{gather*}
+\mathbf{h}_1 = \Delta x \mathbf{A}^{n} \mathbf{v}^n + \Delta x\mathbf{b}|_{\mathbf{v}^n}\\
+\mathbf{h}_2 = \Delta x \mathbf{A}^{n+.5} (\mathbf{v}^n+.5\mathbf{h}_1) + \Delta x\mathbf{b}|_{\mathbf{v}^n + .5\mathbf{h_1}}\\
+\mathbf{h}_3 = \Delta x \mathbf{A}^{n+.5} (\mathbf{v}^n+.5\mathbf{h}_2) +  \Delta x\mathbf{b}|_{\mathbf{v}^n + .5\mathbf{h_2}}\\
+\mathbf{h}_4 = \Delta x \mathbf{A}^{n+1} (\mathbf{v}^n+\mathbf{h}_3) + \Delta x\mathbf{b}|_{\mathbf{v}^n + \mathbf{h_3}}\\
+\mathbf{v}^{n+1} = \mathbf{v}^n + \frac{1}{6} (\mathbf{h}_1 + 2\mathbf{h}_2 + 2 \mathbf{h}_3 + \mathbf{h}_4) 
+\end{gather*}
+The initial conditions for the corresponding IVP become $\mathbf{v}^1 = \begin{bmatrix}
+2 & w
+\end{bmatrix}^T.$ Let $F(w,10)$ denote $y(10)$ obtained by solving the above IVP with initial condition $w$. We seek to find a root of $F(w,10) - \frac{1}{2}$. To start with, we will consider $ w = -50, -49, \dots, 49, 50$ and a larger step size of $\Delta x = .01$.
+	\begin{figure}[H]
+	\centering
+	\includegraphics[scale=.7]{ex10_1_fig.png} 
+	\label{fig:ex10_1}
+\end{figure}
+\lstinputlisting{ex10.m}
+The nonlinearity of the equation gives rise to multiple solutions. We only seek a single solution, so let's focus on the one near $w = 0$. Refining the interval to search for $w$ and performing linear interpolation yields $w = 1.5401$.
+	\begin{figure}[H]
+	\centering
+	\includegraphics[scale=.7]{ex10_2_fig.png} 
+	\label{fig:ex10_2}
+\end{figure}
+Solving the DE with this initial condition yields
+	\begin{figure}[H]
+	\centering
+	\includegraphics[scale=.7]{ex10_3_fig.png} 
+	\label{fig:ex10_3}
+\end{figure}
+\subsubsection{Eigenvalue Problems}
+\end{document}
 %%references: 
 % https://people.sc.fsu.edu/~jpeterson/nde_book4.pdf
 %http://www.math.ubc.ca/~feldman/m256/richard.pdf
